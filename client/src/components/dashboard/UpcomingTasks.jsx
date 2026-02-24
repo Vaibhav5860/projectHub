@@ -1,13 +1,36 @@
 import React from 'react'
+import { useTasks } from '../../context/TaskContext'
 
-const upcomingTasks = [
-  { title: 'Review PR #142', priority: 'High', due: 'Today', tag: 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400' },
-  { title: 'Update user docs', priority: 'Medium', due: 'Tomorrow', tag: 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' },
-  { title: 'Team standup notes', priority: 'Low', due: 'Wed', tag: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  { title: 'Deploy staging build', priority: 'High', due: 'Thu', tag: 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400' },
-]
+const priorityTag = {
+  High: 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+  Medium: 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  Low: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+}
 
 const UpcomingTasks = () => {
+  const { tasks } = useTasks()
+  const upcomingTasks = tasks
+    .filter(t => t.status !== 'Completed')
+    .sort((a, b) => new Date(a.dueDate || '9999') - new Date(b.dueDate || '9999'))
+    .slice(0, 4)
+    .map(t => {
+      const due = t.dueDate ? new Date(t.dueDate) : null
+      const today = new Date()
+      let dueLabel = 'No date'
+      if (due) {
+        const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24))
+        if (diff <= 0) dueLabel = 'Today'
+        else if (diff === 1) dueLabel = 'Tomorrow'
+        else dueLabel = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      }
+      return {
+        title: t.title,
+        priority: t.priority,
+        due: dueLabel,
+        tag: priorityTag[t.priority] || priorityTag.Medium,
+      }
+    })
+
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700/50">

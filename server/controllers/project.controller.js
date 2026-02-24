@@ -1,4 +1,5 @@
 const Project = require("../models/Project");
+const { logActivity } = require("./activity.controller");
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -35,6 +36,7 @@ exports.createProject = async (req, res, next) => {
   try {
     req.body.createdBy = req.user.id;
     const project = await Project.create(req.body);
+    await logActivity(req.user.id, "created project", project.name, "Project", project._id);
     res.status(201).json({ success: true, data: project });
   } catch (error) {
     next(error);
@@ -52,6 +54,7 @@ exports.updateProject = async (req, res, next) => {
     if (!project) {
       return res.status(404).json({ success: false, message: "Project not found" });
     }
+    await logActivity(req.user.id, "updated project", project.name, "Project", project._id);
     res.status(200).json({ success: true, data: project });
   } catch (error) {
     next(error);
@@ -66,6 +69,7 @@ exports.deleteProject = async (req, res, next) => {
     if (!project) {
       return res.status(404).json({ success: false, message: "Project not found" });
     }
+    await logActivity(req.user.id, "deleted project", project.name, "Project", project._id);
     res.status(200).json({ success: true, data: {} });
   } catch (error) {
     next(error);

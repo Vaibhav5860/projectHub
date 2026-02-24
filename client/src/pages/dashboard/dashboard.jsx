@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import Sidebar from '../../components/dashboard/Sidebar'
 import TopBar from '../../components/dashboard/TopBar'
 import StatsGrid from '../../components/dashboard/StatsGrid'
@@ -15,9 +15,9 @@ import TaskCompletionChart from '../../components/dashboard/charts/TaskCompletio
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const location = useLocation()
-  const userName = location.state?.name || 'User'
-  const userRole = location.state?.role || 'developer'
+  const { user } = useAuth()
+  const userName = user?.name || 'User'
+  const userRole = user?.role || 'Member'
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200 flex">

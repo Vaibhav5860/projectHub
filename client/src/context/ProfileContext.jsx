@@ -1,79 +1,117 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { useAuth } from './AuthContext'
 
 const ProfileContext = createContext()
 
-const defaultProfile = {
-  name: 'John Doe',
-  email: 'john@example.com',
-  role: 'Full Stack Developer',
-  department: 'Engineering',
-  phone: '+1 (555) 123-4567',
-  location: 'San Francisco, CA',
-  bio: 'Passionate developer with 5+ years of experience building web applications. Love working with React, Node.js, and cloud technologies.',
-  avatar: 'JD',
-  status: 'Online',
-  joinedDate: 'Jan 15, 2024',
-  timezone: 'PST (UTC-8)',
-  language: 'English',
-  website: 'https://johndoe.dev',
-  github: 'johndoe',
-  linkedin: 'johndoe',
-  skills: ['React', 'Node.js', 'TypeScript', 'Python', 'AWS', 'Docker', 'GraphQL', 'PostgreSQL'],
-  notifications: {
-    email: true,
-    push: true,
-    taskUpdates: true,
-    teamMessages: true,
-    projectAlerts: true,
-    weeklyDigest: false,
-  },
-  stats: {
-    projectsCompleted: 24,
-    tasksFinished: 187,
-    teamCollaborations: 12,
-    codeReviews: 56,
-  },
-  activity: [
-    { id: 1, action: 'Completed task', target: 'Update API documentation', time: '2 hours ago', icon: '✅' },
-    { id: 2, action: 'Pushed code to', target: 'feature/auth-module', time: '4 hours ago', icon: '🔀' },
-    { id: 3, action: 'Commented on', target: 'Dashboard redesign', time: '6 hours ago', icon: '💬' },
-    { id: 4, action: 'Joined project', target: 'Mobile App v2.0', time: '1 day ago', icon: '📁' },
-    { id: 5, action: 'Reviewed PR for', target: 'Payment integration', time: '1 day ago', icon: '👀' },
-    { id: 6, action: 'Created task', target: 'Setup CI/CD pipeline', time: '2 days ago', icon: '📋' },
-    { id: 7, action: 'Updated profile', target: 'Added new skills', time: '3 days ago', icon: '✏️' },
-    { id: 8, action: 'Completed milestone', target: 'Sprint 14 delivery', time: '4 days ago', icon: '🎯' },
-  ],
-}
-
 export const ProfileProvider = ({ children }) => {
-  const [profile, setProfile] = useState(() => {
-    const saved = localStorage.getItem('projecthub_profile')
-    return saved ? JSON.parse(saved) : defaultProfile
+  const { user, updateUser: authUpdateUser } = useAuth()
+
+  const [profile, setProfile] = useState({
+    name: '',
+    email: '',
+    role: 'Member',
+    department: '',
+    phone: '',
+    location: '',
+    bio: '',
+    avatar: '',
+    status: 'Online',
+    joinedDate: '',
+    timezone: '',
+    language: 'English',
+    website: '',
+    github: '',
+    linkedin: '',
+    skills: [],
+    notifications: {
+      email: true,
+      push: true,
+      taskUpdates: true,
+      teamMessages: true,
+      projectAlerts: true,
+      weeklyDigest: false,
+    },
+    stats: {
+      projectsCompleted: 0,
+      tasksFinished: 0,
+      teamCollaborations: 0,
+      codeReviews: 0,
+    },
+    activity: [],
   })
 
+  // Sync profile from auth user
   useEffect(() => {
-    localStorage.setItem('projecthub_profile', JSON.stringify(profile))
-  }, [profile])
+    if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        role: user.role || prev.role,
+        department: user.department || prev.department,
+        phone: user.phone || prev.phone,
+        location: user.location || prev.location,
+        bio: user.bio || prev.bio,
+        avatar: user.avatar || user.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || prev.avatar,
+        status: user.status || prev.status,
+        joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : prev.joinedDate,
+        timezone: user.timezone || prev.timezone,
+        language: user.language || prev.language,
+        website: user.website || prev.website,
+        github: user.github || prev.github,
+        linkedin: user.linkedin || prev.linkedin,
+        skills: user.skills?.length > 0 ? user.skills : prev.skills,
+        notifications: user.notifications || prev.notifications,
+      }))
+    }
+  }, [user])
 
-  const updateProfile = (updates) => {
-    setProfile((prev) => ({ ...prev, ...updates }))
-  }
-
-  const updateNotifications = (key, value) => {
-    setProfile((prev) => ({
-      ...prev,
-      notifications: { ...prev.notifications, [key]: value },
-    }))
-  }
-
-  const addSkill = (skill) => {
-    if (skill && !profile.skills.includes(skill)) {
-      setProfile((prev) => ({ ...prev, skills: [...prev.skills, skill] }))
+  const updateProfile = async (updates) => {
+    try {
+      await authUpdateUser(updates)
+      setProfile((prev) => ({ ...prev, ...updates }))
+    } catch (err) {
+      console.error('Failed to update profile:', err)
+      throw err
     }
   }
 
-  const removeSkill = (skill) => {
-    setProfile((prev) => ({ ...prev, skills: prev.skills.filter((s) => s !== skill) }))
+  const updateNotifications = async (key, value) => {
+    try {
+      const newNotifications = { ...profile.notifications, [key]: value }
+      await authUpdateUser({ notifications: newNotifications })
+      setProfile((prev) => ({
+        ...prev,
+        notifications: newNotifications,
+      }))
+    } catch (err) {
+      console.error('Failed to update notifications:', err)
+      throw err
+    }
+  }
+
+  const addSkill = async (skill) => {
+    if (skill && !profile.skills.includes(skill)) {
+      const newSkills = [...profile.skills, skill]
+      try {
+        await authUpdateUser({ skills: newSkills })
+        setProfile((prev) => ({ ...prev, skills: newSkills }))
+      } catch (err) {
+        console.error('Failed to add skill:', err)
+        throw err
+      }
+    }
+  }
+
+  const removeSkill = async (skill) => {
+    const newSkills = profile.skills.filter((s) => s !== skill)
+    try {
+      await authUpdateUser({ skills: newSkills })
+      setProfile((prev) => ({ ...prev, skills: newSkills }))
+    } catch (err) {
+      console.error('Failed to remove skill:', err)
+      throw err
+    }
   }
 
   return (

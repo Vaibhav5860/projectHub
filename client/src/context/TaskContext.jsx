@@ -1,181 +1,150 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { tasksAPI } from '../services/api'
+import { useAuth } from './AuthContext'
+import { getSocket, emitDataChanged } from '../services/socket'
 
 const TaskContext = createContext()
 
-const defaultTasks = [
-  {
-    id: '1',
-    title: 'Design homepage mockup',
-    description: 'Create wireframes and high-fidelity mockups for the new homepage redesign.',
-    status: 'In Progress',
-    priority: 'High',
-    dueDate: '2026-02-20',
-    assignee: 'Sarah K.',
-    project: 'Website Redesign',
-    createdAt: '2026-02-10',
-    subtasks: [
-      { id: 's1', title: 'Research competitor designs', completed: true },
-      { id: 's2', title: 'Create wireframe sketches', completed: true },
-      { id: 's3', title: 'Build high-fidelity mockup', completed: false },
-      { id: 's4', title: 'Get team feedback', completed: false },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Fix login bug on mobile',
-    description: 'Users are unable to log in on iOS Safari. Investigate and fix the issue.',
-    status: 'Todo',
-    priority: 'High',
-    dueDate: '2026-02-17',
-    assignee: 'Mike R.',
-    project: 'Mobile App v2',
-    createdAt: '2026-02-14',
-    subtasks: [
-      { id: 's5', title: 'Reproduce the bug', completed: true },
-      { id: 's6', title: 'Identify root cause', completed: false },
-    ],
-  },
-  {
-    id: '3',
-    title: 'Write API documentation',
-    description: 'Document all REST API endpoints including request/response schemas.',
-    status: 'In Progress',
-    priority: 'Medium',
-    dueDate: '2026-02-22',
-    assignee: 'Lisa T.',
-    project: 'API Integration',
-    createdAt: '2026-02-12',
-    subtasks: [
-      { id: 's7', title: 'Auth endpoints', completed: true },
-      { id: 's8', title: 'User endpoints', completed: true },
-      { id: 's9', title: 'Project endpoints', completed: false },
-      { id: 's10', title: 'Task endpoints', completed: false },
-    ],
-  },
-  {
-    id: '4',
-    title: 'Set up CI/CD pipeline',
-    description: 'Configure GitHub Actions for automated testing and deployment.',
-    status: 'Todo',
-    priority: 'Medium',
-    dueDate: '2026-02-25',
-    assignee: 'John D.',
-    project: 'Dashboard Analytics',
-    createdAt: '2026-02-15',
-    subtasks: [],
-  },
-  {
-    id: '5',
-    title: 'User onboarding flow',
-    description: 'Design and implement the new user onboarding experience with guided tour.',
-    status: 'In Review',
-    priority: 'High',
-    dueDate: '2026-02-18',
-    assignee: 'Amy W.',
-    project: 'Website Redesign',
-    createdAt: '2026-02-08',
-    subtasks: [
-      { id: 's11', title: 'Design onboarding screens', completed: true },
-      { id: 's12', title: 'Implement step-by-step guide', completed: true },
-      { id: 's13', title: 'Add tooltips and highlights', completed: true },
-    ],
-  },
-  {
-    id: '6',
-    title: 'Database optimization',
-    description: 'Optimize slow queries and add proper indexing for better performance.',
-    status: 'Completed',
-    priority: 'Low',
-    dueDate: '2026-02-15',
-    assignee: 'Mike R.',
-    project: 'API Integration',
-    createdAt: '2026-02-05',
-    subtasks: [
-      { id: 's14', title: 'Identify slow queries', completed: true },
-      { id: 's15', title: 'Add database indexes', completed: true },
-      { id: 's16', title: 'Test performance improvements', completed: true },
-    ],
-  },
-  {
-    id: '7',
-    title: 'Create team standup template',
-    description: 'Design a reusable standup meeting template for daily team syncs.',
-    status: 'Completed',
-    priority: 'Low',
-    dueDate: '2026-02-12',
-    assignee: 'Sarah K.',
-    project: 'Dashboard Analytics',
-    createdAt: '2026-02-10',
-    subtasks: [],
-  },
-]
-
 export const TaskProvider = ({ children }) => {
-  const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem('projecthub-tasks')
-    return saved ? JSON.parse(saved) : defaultTasks
-  })
+  const [tasks, setTasks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { token } = useAuth()
+
+  const fetchTasks = useCallback(async () => {
+    if (!token) {
+      setTasks([])
+      setLoading(false)
+      return
+    }
+    try {
+      setLoading(true)
+      const res = await tasksAPI.getAll()
+      setTasks(res.data.data.map(t => ({
+        ...t,
+        id: t._id,
+        assignee: typeof t.assignee === 'object' ? t.assignee?.name : (t.assignee || ''),
+        assigneeId: typeof t.assignee === 'object' ? t.assignee?._id : t.assignee,
+        project: typeof t.project === 'object' ? t.project?.name : (t.project || ''),
+        projectId: typeof t.project === 'object' ? t.project?._id : t.project,
+        subtasks: (t.subtasks || []).map(s => ({ ...s, id: s._id })),
+      })))
+      setError(null)
+    } catch (err) {
+      console.error('Failed to fetch tasks:', err)
+      setError(err.response?.data?.message || 'Failed to load tasks')
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
 
   useEffect(() => {
-    localStorage.setItem('projecthub-tasks', JSON.stringify(tasks))
-  }, [tasks])
+    fetchTasks()
+  }, [fetchTasks])
 
-  const addTask = (task) => {
-    const newTask = {
-      ...task,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split('T')[0],
-      subtasks: [],
+  // Listen for real-time updates
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+
+    const handleDataUpdate = (data) => {
+      if (data.type === 'task') {
+        fetchTasks()
+      }
     }
-    setTasks((prev) => [newTask, ...prev])
-    return newTask
+
+    socket.on('data_updated', handleDataUpdate)
+    return () => socket.off('data_updated', handleDataUpdate)
+  }, [fetchTasks])
+
+  const addTask = async (taskData) => {
+    try {
+      // Clean data for API - remove text assignee (backend expects ObjectId or empty)
+      const apiData = { ...taskData }
+      if (apiData.assignee && typeof apiData.assignee === 'string' && !apiData.assignee.match(/^[0-9a-fA-F]{24}$/)) {
+        delete apiData.assignee
+      }
+      if (apiData.project && typeof apiData.project === 'string' && !apiData.project.match(/^[0-9a-fA-F]{24}$/)) {
+        delete apiData.project
+      }
+      const res = await tasksAPI.create(apiData)
+      const task = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      setTasks((prev) => [task, ...prev])
+      emitDataChanged({ type: 'task', action: 'create' })
+      return task
+    } catch (err) {
+      throw err
+    }
   }
 
-  const updateTask = (id, updates) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)))
+  const updateTask = async (id, updates) => {
+    try {
+      const res = await tasksAPI.update(id, updates)
+      const task = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      setTasks((prev) => prev.map((t) => (t._id === id || t.id === id ? task : t)))
+      emitDataChanged({ type: 'task', action: 'update' })
+      return task
+    } catch (err) {
+      throw err
+    }
   }
 
-  const deleteTask = (id) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id))
+  const deleteTask = async (id) => {
+    try {
+      await tasksAPI.delete(id)
+      setTasks((prev) => prev.filter((t) => t._id !== id && t.id !== id))
+      emitDataChanged({ type: 'task', action: 'delete' })
+    } catch (err) {
+      throw err
+    }
   }
 
-  const addSubtask = (taskId, title) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? { ...t, subtasks: [...t.subtasks, { id: `s${Date.now()}`, title, completed: false }] }
-          : t
+  const addSubtask = async (taskId, title) => {
+    try {
+      const task = tasks.find((t) => t._id === taskId || t.id === taskId)
+      if (!task) return
+      const subtasks = [...(task.subtasks || []), { title, completed: false }]
+      const res = await tasksAPI.update(task._id || taskId, { subtasks })
+      const updated = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      setTasks((prev) => prev.map((t) => (t._id === taskId || t.id === taskId ? updated : t)))
+      emitDataChanged({ type: 'task', action: 'update' })
+    } catch (err) {
+      throw err
+    }
+  }
+
+  const toggleSubtask = async (taskId, subtaskId) => {
+    try {
+      const task = tasks.find((t) => t._id === taskId || t.id === taskId)
+      if (!task) return
+      const subtasks = task.subtasks.map((s) =>
+        (s._id === subtaskId || s.id === subtaskId) ? { ...s, completed: !s.completed } : s
       )
-    )
+      const res = await tasksAPI.update(task._id || taskId, { subtasks })
+      const updated = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      setTasks((prev) => prev.map((t) => (t._id === taskId || t.id === taskId ? updated : t)))
+      emitDataChanged({ type: 'task', action: 'update' })
+    } catch (err) {
+      throw err
+    }
   }
 
-  const toggleSubtask = (taskId, subtaskId) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              subtasks: t.subtasks.map((s) =>
-                s.id === subtaskId ? { ...s, completed: !s.completed } : s
-              ),
-            }
-          : t
-      )
-    )
-  }
-
-  const deleteSubtask = (taskId, subtaskId) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtaskId) }
-          : t
-      )
-    )
+  const deleteSubtask = async (taskId, subtaskId) => {
+    try {
+      const task = tasks.find((t) => t._id === taskId || t.id === taskId)
+      if (!task) return
+      const subtasks = task.subtasks.filter((s) => s._id !== subtaskId && s.id !== subtaskId)
+      const res = await tasksAPI.update(task._id || taskId, { subtasks })
+      const updated = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      setTasks((prev) => prev.map((t) => (t._id === taskId || t.id === taskId ? updated : t)))
+      emitDataChanged({ type: 'task', action: 'update' })
+    } catch (err) {
+      throw err
+    }
   }
 
   return (
-    <TaskContext.Provider value={{ tasks, addTask, updateTask, deleteTask, addSubtask, toggleSubtask, deleteSubtask }}>
+    <TaskContext.Provider value={{ tasks, loading, error, addTask, updateTask, deleteTask, addSubtask, toggleSubtask, deleteSubtask, fetchTasks }}>
       {children}
     </TaskContext.Provider>
   )

@@ -40,7 +40,7 @@ const Sidebar = ({ sidebarOpen, activePage = 'Dashboard' }) => {
     <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed inset-y-0 left-0 z-30 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700/50 transition-all duration-300 flex flex-col`}>
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 h-16 border-b border-slate-200 dark:border-slate-700/50">
-        <div className="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shrink-0">P</div>
+        <img src="/src/assets/logo.png" alt="ProjectHub" className="h-8 w-8 rounded-lg shrink-0 object-contain" />
         {sidebarOpen && (
           <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">
             Project<span className="text-indigo-600 dark:text-indigo-400">Hub</span>

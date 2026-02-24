@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../context/ThemeContext'
+import { activitiesAPI } from '../../../services/api'
 import {
   AreaChart,
   Area,
@@ -9,16 +10,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-
-const activityData = [
-  { day: 'Mon', tasks: 5, commits: 12, reviews: 3 },
-  { day: 'Tue', tasks: 8, commits: 18, reviews: 5 },
-  { day: 'Wed', tasks: 6, commits: 14, reviews: 7 },
-  { day: 'Thu', tasks: 11, commits: 22, reviews: 4 },
-  { day: 'Fri', tasks: 9, commits: 16, reviews: 6 },
-  { day: 'Sat', tasks: 3, commits: 5, reviews: 1 },
-  { day: 'Sun', tasks: 2, commits: 3, reviews: 0 },
-]
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -39,6 +30,27 @@ const CustomTooltip = ({ active, payload, label }) => {
 const WeeklyActivityChart = () => {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+  const [activityData, setActivityData] = useState([
+    { day: 'Mon', tasks: 0, projects: 0, team: 0 },
+    { day: 'Tue', tasks: 0, projects: 0, team: 0 },
+    { day: 'Wed', tasks: 0, projects: 0, team: 0 },
+    { day: 'Thu', tasks: 0, projects: 0, team: 0 },
+    { day: 'Fri', tasks: 0, projects: 0, team: 0 },
+    { day: 'Sat', tasks: 0, projects: 0, team: 0 },
+    { day: 'Sun', tasks: 0, projects: 0, team: 0 },
+  ])
+
+  useEffect(() => {
+    const fetchWeekly = async () => {
+      try {
+        const res = await activitiesAPI.getWeekly()
+        if (res.data.data?.length) setActivityData(res.data.data)
+      } catch (err) {
+        console.error('Failed to fetch weekly activity:', err)
+      }
+    }
+    fetchWeekly()
+  }, [])
 
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm p-5">
@@ -47,8 +59,8 @@ const WeeklyActivityChart = () => {
         <div className="flex gap-3">
           {[
             { label: 'Tasks', color: '#6366f1' },
-            { label: 'Commits', color: '#10b981' },
-            { label: 'Reviews', color: '#f59e0b' },
+            { label: 'Projects', color: '#10b981' },
+            { label: 'Team', color: '#f59e0b' },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
@@ -89,6 +101,7 @@ const WeeklyActivityChart = () => {
               tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }}
               axisLine={false}
               tickLine={false}
+              allowDecimals={false}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area
@@ -101,16 +114,16 @@ const WeeklyActivityChart = () => {
             />
             <Area
               type="monotone"
-              dataKey="commits"
-              name="Commits"
+              dataKey="projects"
+              name="Projects"
               stroke="#10b981"
               strokeWidth={2}
               fill="url(#colorCommits)"
             />
             <Area
               type="monotone"
-              dataKey="reviews"
-              name="Reviews"
+              dataKey="team"
+              name="Team"
               stroke="#f59e0b"
               strokeWidth={2}
               fill="url(#colorReviews)"

@@ -1,11 +1,15 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import ThemeToggle from '../../components/ThemeToggle'
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '', role: '' })
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   const roles = [
     { value: 'admin', label: 'Admin', icon: '🛡️', description: 'Full system access & control' },
@@ -17,10 +21,24 @@ const Login = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const name = formData.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-    navigate('/dashboard', { state: { name, role: formData.role } })
+    setError('')
+    setIsLoading(true)
+    try {
+      await login(formData.email, formData.password)
+      navigate('/dashboard')
+    } catch (err) {
+      const msg = err.response?.data?.message
+      if (msg === 'Invalid credentials') {
+        setError('Invalid credentials. Please check your email/password or sign up first.')
+      } else {
+        setError(msg || 'Login failed. Please try again.')
+      }
+      setTimeout(() => setError(''), 3000)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -42,6 +60,13 @@ const Login = () => {
         {/* Card */}
         <div className="bg-white/80 dark:bg-slate-800/60 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 mb-10 shadow-lg dark:shadow-xl transition-colors duration-200">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Error Message */}
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-600 dark:text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -136,13 +161,13 @@ const Login = () => {
             {/* Submit */}
             <button
               type="submit"
-              disabled={!formData.role}
-              className={`w-full py-2.5 text-white font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 cursor-pointer ${formData.role
+              disabled={!formData.role || isLoading}
+              className={`w-full py-2.5 text-white font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 cursor-pointer ${formData.role && !isLoading
                   ? 'bg-indigo-600 hover:bg-indigo-500'
                   : 'bg-indigo-400 cursor-not-allowed opacity-70'
                 }`}
             >
-              Sign In{formData.role ? ` as ${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}` : ''}
+              {isLoading ? 'Signing In...' : `Sign In${formData.role ? ` as ${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}` : ''}`}
             </button>
           </form>
 

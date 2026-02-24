@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTheme } from '../../../context/ThemeContext'
 import { useProjects } from '../../../context/ProjectContext'
+import { useTasks } from '../../../context/TaskContext'
 import {
   RadialBarChart,
   RadialBar,
@@ -27,17 +28,17 @@ const CustomTooltip = ({ active, payload }) => {
 const TaskCompletionChart = () => {
   const { theme } = useTheme()
   const { projects } = useProjects()
+  const { tasks } = useTasks()
   const isDark = theme === 'dark'
 
   const data = projects
-    .filter((p) => p.tasks.total > 0)
-    .map((p, i) => ({
-      name: p.name,
-      value: Math.round((p.tasks.completed / p.tasks.total) * 100),
-      completed: p.tasks.completed,
-      total: p.tasks.total,
-      fill: COLORS[i % COLORS.length],
-    }))
+    .map((p, i) => {
+      const projectTasks = tasks.filter(t => t.project === p.name || t.projectId === p.id)
+      const total = projectTasks.length
+      const completed = projectTasks.filter(t => t.status === 'Completed').length
+      return { name: p.name, value: total > 0 ? Math.round((completed / total) * 100) : 0, completed, total, fill: COLORS[i % COLORS.length] }
+    })
+    .filter(d => d.total > 0)
     .sort((a, b) => a.value - b.value)
 
   return (

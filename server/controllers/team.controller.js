@@ -1,4 +1,5 @@
 const Team = require("../models/Team");
+const { logActivity } = require("./activity.controller");
 
 // @desc    Get all teams
 // @route   GET /api/teams
@@ -34,6 +35,7 @@ exports.createTeam = async (req, res, next) => {
   try {
     req.body.createdBy = req.user.id;
     const team = await Team.create(req.body);
+    await logActivity(req.user.id, "created team", team.name, "Team", team._id);
     res.status(201).json({ success: true, data: team });
   } catch (error) {
     next(error);
@@ -81,6 +83,7 @@ exports.addMember = async (req, res, next) => {
     }
     team.members.push({ user: req.body.userId, role: req.body.role || "Member" });
     await team.save();
+    await logActivity(req.user.id, "added member to", team.name, "Team", team._id);
     res.status(200).json({ success: true, data: team });
   } catch (error) {
     next(error);

@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
+import { useProjects } from '../../context/ProjectContext'
 
 const AddTaskModal = ({ onClose, onAdd }) => {
+  const { projects } = useProjects()
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -121,7 +123,7 @@ const AddTaskModal = ({ onClose, onAdd }) => {
                 type="text"
                 value={form.assignee}
                 onChange={handleChange}
-                placeholder="Assign to..."
+                placeholder="Assign to (optional)..."
                 className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
               />
             </div>
@@ -137,10 +139,9 @@ const AddTaskModal = ({ onClose, onAdd }) => {
               className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer"
             >
               <option value="">No project</option>
-              <option value="Website Redesign">Website Redesign</option>
-              <option value="Mobile App v2">Mobile App v2</option>
-              <option value="API Integration">API Integration</option>
-              <option value="Dashboard Analytics">Dashboard Analytics</option>
+              {projects.map((p) => (
+                <option key={p._id || p.id} value={p._id || p.id}>{p.name}</option>
+              ))}
             </select>
           </div>
 

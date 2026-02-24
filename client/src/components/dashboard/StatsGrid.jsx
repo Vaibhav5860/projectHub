@@ -1,11 +1,7 @@
 import React from 'react'
-
-const stats = [
-  { label: 'Total Projects', value: '12', icon: '📁', color: 'indigo', change: '+2 this week' },
-  { label: 'Active Tasks', value: '34', icon: '✅', color: 'sky', change: '8 due today' },
-  { label: 'Team Members', value: '9', icon: '👥', color: 'emerald', change: '+1 new' },
-  { label: 'Completed', value: '87%', icon: '📊', color: 'amber', change: '+5% this month' },
-]
+import { useProjects } from '../../context/ProjectContext'
+import { useTasks } from '../../context/TaskContext'
+import { useTeam } from '../../context/TeamContext'
 
 const colorMap = {
   indigo: { bg: 'bg-indigo-100 dark:bg-indigo-500/10', text: 'text-indigo-600 dark:text-indigo-400' },
@@ -15,6 +11,21 @@ const colorMap = {
 }
 
 const StatsGrid = () => {
+  const { projects } = useProjects()
+  const { tasks } = useTasks()
+  const { members } = useTeam()
+
+  const activeTasks = tasks.filter(t => t.status !== 'Completed').length
+  const completedTasks = tasks.filter(t => t.status === 'Completed').length
+  const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0
+
+  const stats = [
+    { label: 'Total Projects', value: String(projects.length), icon: '📁', color: 'indigo', change: `${projects.filter(p => p.status === 'In Progress').length} active` },
+    { label: 'Active Tasks', value: String(activeTasks), icon: '✅', color: 'sky', change: `${completedTasks} completed` },
+    { label: 'Team Members', value: String(members.length), icon: '👥', color: 'emerald', change: 'total members' },
+    { label: 'Completed', value: `${completionRate}%`, icon: '📊', color: 'amber', change: `${completedTasks} tasks done` },
+  ]
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
       {stats.map((stat) => (
