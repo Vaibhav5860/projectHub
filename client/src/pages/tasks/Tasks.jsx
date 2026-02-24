@@ -7,9 +7,12 @@ import TaskList from '../../components/tasks/TaskList'
 import AddTaskModal from '../../components/tasks/AddTaskModal'
 import TaskDetail from '../../components/tasks/TaskDetail'
 import { useTasks } from '../../context/TaskContext'
+import { useAuth } from '../../context/AuthContext'
 
 const Tasks = () => {
   const { tasks, addTask, updateTask, deleteTask, addSubtask, toggleSubtask, deleteSubtask } = useTasks()
+  const { user } = useAuth()
+  const userRole = user?.role
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [selectedTask, setSelectedTask] = useState(null)
@@ -61,15 +64,17 @@ const Tasks = () => {
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tasks</h1>
               <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Manage and track all your tasks</p>
             </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-lg transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 shadow-sm"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Add Task
-            </button>
+            {(userRole === 'admin' || userRole === 'manager') && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-lg transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 shadow-sm"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Task
+              </button>
+            )}
           </div>
 
           <TaskStatsBar tasks={tasks} />
@@ -96,7 +101,7 @@ const Tasks = () => {
       </div>
 
       {/* Add Task Modal */}
-      {showAddModal && (
+      {showAddModal && (userRole === 'admin' || userRole === 'manager') && (
         <AddTaskModal onClose={() => setShowAddModal(false)} onAdd={addTask} />
       )}
 
@@ -106,7 +111,7 @@ const Tasks = () => {
           task={activeTask}
           onClose={() => setSelectedTask(null)}
           onUpdate={updateTask}
-          onDelete={deleteTask}
+          onDelete={(userRole === 'admin' || userRole === 'manager') ? deleteTask : undefined}
           onAddSubtask={addSubtask}
           onToggleSubtask={toggleSubtask}
           onDeleteSubtask={deleteSubtask}

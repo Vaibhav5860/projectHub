@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useProjects } from '../../context/ProjectContext'
 
 const AddTaskModal = ({ onClose, onAdd }) => {
@@ -13,14 +13,38 @@ const AddTaskModal = ({ onClose, onAdd }) => {
     project: '',
   })
 
+  const selectedProject = useMemo(() => {
+    if (!form.project) return null
+    return projects.find(p => (p._id || p.id) === form.project)
+  }, [form.project, projects])
+
+  const projectMembers = useMemo(() => {
+    if (!selectedProject) return []
+    const members = [...(selectedProject.teamMembers || [])]
+    // Add lead if not already in team
+    if (selectedProject.leadId && !members.some(m => m._id === selectedProject.leadId)) {
+      members.unshift({ _id: selectedProject.leadId, name: selectedProject.lead })
+    }
+    return members
+  }, [selectedProject])
+
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    if (name === 'project') {
+      setForm({ ...form, project: value, assignee: '' })
+    } else {
+      setForm({ ...form, [name]: value })
+    }
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.title.trim()) return
-    onAdd(form)
+    onAdd({
+      ...form,
+      assignee: form.assignee || undefined,
+      project: form.project || undefined,
+    })
     onClose()
   }
 
@@ -104,6 +128,23 @@ const AddTaskModal = ({ onClose, onAdd }) => {
             </div>
           </div>
 
+          {/* Project (select first) */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Project *</label>
+            <select
+              name="project"
+              value={form.project}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer"
+            >
+              <option value="">Select a project</option>
+              {projects.map((p) => (
+                <option key={p._id || p.id} value={p._id || p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Due Date & Assignee */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -118,31 +159,19 @@ const AddTaskModal = ({ onClose, onAdd }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Assignee</label>
-              <input
+              <select
                 name="assignee"
-                type="text"
                 value={form.assignee}
                 onChange={handleChange}
-                placeholder="Assign to (optional)..."
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              />
+                disabled={!form.project}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">{form.project ? 'Select assignee' : 'Select project first'}</option>
+                {projectMembers.map((m) => (
+                  <option key={m._id} value={m._id}>{m.name}</option>
+                ))}
+              </select>
             </div>
-          </div>
-
-          {/* Project */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Project</label>
-            <select
-              name="project"
-              value={form.project}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer"
-            >
-              <option value="">No project</option>
-              {projects.map((p) => (
-                <option key={p._id || p.id} value={p._id || p.id}>{p.name}</option>
-              ))}
-            </select>
           </div>
 
           {/* Actions */}

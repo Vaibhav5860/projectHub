@@ -27,6 +27,7 @@ export const ProjectProvider = ({ children }) => {
         leadId: typeof p.lead === 'object' ? p.lead?._id : p.lead,
         team: (p.team || []).map(m => typeof m === 'object' ? m.name : m),
         teamIds: (p.team || []).map(m => typeof m === 'object' ? m._id : m),
+        teamMembers: (p.team || []).map(m => typeof m === 'object' ? { _id: m._id, name: m.name, avatar: m.avatar } : { _id: m, name: m }),
         tags: p.tags || [],
         tasks: p.tasks || { total: 0, completed: 0 },
         recentActivity: p.recentActivity || [],

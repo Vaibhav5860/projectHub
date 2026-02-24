@@ -43,6 +43,8 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
+  changePassword: (data) => api.put('/auth/password', data),
+  deleteAccount: (data) => api.delete('/auth/account', { data }),
 }
 
 // Projects API
@@ -80,6 +82,8 @@ export const messagesAPI = {
   getConversation: (id) => api.get(`/messages/conversations/${id}`),
   createConversation: (data) => api.post('/messages/conversations', data),
   sendMessage: (conversationId, data) => api.post(`/messages/conversations/${conversationId}/messages`, data),
+  getProjectChat: (projectId) => api.get(`/messages/project/${projectId}`),
+  sendProjectMessage: (projectId, data) => api.post(`/messages/project/${projectId}/messages`, data),
 }
 
 // Activities API

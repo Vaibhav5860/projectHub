@@ -25,12 +25,17 @@ const conversationSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["direct", "group"],
+      enum: ["direct", "group", "project"],
       default: "direct",
     },
     name: {
       type: String,
       default: "",
+    },
+    project: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      default: null,
     },
     members: [
       {

@@ -11,6 +11,11 @@ exports.getTasks = async (req, res, next) => {
     if (req.query.priority) filter.priority = req.query.priority;
     if (req.query.assignee) filter.assignee = req.query.assignee;
 
+    // Developers only see tasks assigned to them or created by them
+    if (req.user.role === "developer") {
+      filter.$or = [{ assignee: req.user.id }, { createdBy: req.user.id }];
+    }
+
     const tasks = await Task.find(filter)
       .populate("assignee", "name avatar")
       .populate("project", "name");
@@ -41,7 +46,10 @@ exports.getTask = async (req, res, next) => {
 exports.createTask = async (req, res, next) => {
   try {
     req.body.createdBy = req.user.id;
-    const task = await Task.create(req.body);
+    let task = await Task.create(req.body);
+    task = await Task.findById(task._id)
+      .populate("assignee", "name avatar")
+      .populate("project", "name");
     await logActivity(req.user.id, "created task", task.title, "Task", task._id);
     res.status(201).json({ success: true, data: task });
   } catch (error) {
@@ -57,7 +65,9 @@ exports.updateTask = async (req, res, next) => {
     const task = await Task.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
-    });
+    })
+      .populate("assignee", "name avatar")
+      .populate("project", "name");
     if (!task) {
       return res.status(404).json({ success: false, message: "Task not found" });
     }

@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { messagesAPI } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 
 const statusColor = {
   'Todo': 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400',
@@ -14,7 +16,13 @@ const priorityDot = {
 }
 
 const ProjectDetail = ({ project, onClose, onUpdate, onDelete }) => {
+  const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
+  const [showChat, setShowChat] = useState(false)
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatMembers, setChatMembers] = useState([])
   const [editForm, setEditForm] = useState({
     name: project.name,
     description: project.description,
@@ -33,6 +41,51 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }) => {
     setIsEditing(false)
   }
 
+  const openChat = async () => {
+    setShowChat(true)
+    setChatLoading(true)
+    try {
+      const res = await messagesAPI.getProjectChat(project.id || project._id)
+      const conv = res.data.data
+      setChatMembers(conv.members || [])
+      setChatMessages((conv.messages || []).map(m => ({
+        id: m._id,
+        senderId: m.sender?._id === user?._id ? 'me' : m.sender?._id,
+        senderName: m.sender?.name || 'Unknown',
+        senderAvatar: m.sender?.avatar || m.sender?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+        text: m.text,
+        time: m.createdAt,
+      })))
+    } catch (err) {
+      console.error('Failed to load project chat:', err)
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return
+    const text = chatInput.trim()
+    setChatInput('')
+    const tempMsg = { id: 'temp_' + Date.now(), senderId: 'me', senderName: user?.name, senderAvatar: user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2), text, time: new Date().toISOString() }
+    setChatMessages(prev => [...prev, tempMsg])
+    try {
+      await messagesAPI.sendProjectMessage(project.id || project._id, { text })
+    } catch (err) {
+      console.error('Failed to send message:', err)
+    }
+  }
+
+  const chatEndRef = React.useRef(null)
+  React.useEffect(() => {
+    if (showChat) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatMessages, showChat])
+
+  const formatChatTime = (t) => {
+    if (!t) return ''
+    return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
@@ -41,18 +94,22 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }) => {
         {/* Banner */}
         <div className={`h-28 bg-gradient-to-r ${project.color} relative`}>
           <div className="absolute top-4 right-4 flex items-center gap-1">
-            <button onClick={() => setIsEditing(!isEditing)}
-              className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition cursor-pointer" title="Edit project">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
-            <button onClick={() => { if (confirm('Delete this project?')) { onDelete(project.id); onClose() } }}
-              className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition cursor-pointer" title="Delete project">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+            {onUpdate && (
+              <button onClick={() => setIsEditing(!isEditing)}
+                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition cursor-pointer" title="Edit project">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            )}
+            {onDelete && (
+              <button onClick={() => { if (confirm('Delete this project?')) { onDelete(project.id); onClose() } }}
+                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition cursor-pointer" title="Delete project">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
             <button onClick={onClose}
               className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition cursor-pointer">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -162,20 +219,87 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }) => {
 
           {/* Team */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Team ({project.team.length})</h3>
-            <div className="space-y-2">
-              {project.team.map((member) => (
-                <div key={member} className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/30 rounded-xl">
-                  <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${project.color} flex items-center justify-center text-white text-xs font-semibold`}>
-                    {member.split(' ').map((n) => n[0]).join('')}
-                  </div>
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{member}</span>
-                  {member === project.lead && (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">Lead</span>
-                  )}
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Team ({project.team.length})</h3>
+              <button
+                onClick={() => showChat ? setShowChat(false) : openChat()}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition cursor-pointer ${showChat ? 'bg-indigo-600 text-white' : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20'}`}
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16h6m-7 4h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {showChat ? 'Close Chat' : 'Project Chat'}
+              </button>
             </div>
+
+            {showChat ? (
+              /* Inline Chat */
+              <div className="border border-slate-200 dark:border-slate-700/50 rounded-xl overflow-hidden">
+                {/* Chat messages */}
+                <div className="h-64 overflow-y-auto px-4 py-3 space-y-2 bg-slate-50 dark:bg-slate-900/30">
+                  {chatLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500" />
+                    </div>
+                  ) : chatMessages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                      <p className="text-xs text-slate-400">No messages yet. Start chatting!</p>
+                    </div>
+                  ) : (
+                    chatMessages.map(msg => (
+                      <div key={msg.id} className={`flex gap-2 ${msg.senderId === 'me' ? 'flex-row-reverse' : ''}`}>
+                        <div className={`h-6 w-6 rounded-md shrink-0 flex items-center justify-center text-white text-[9px] font-bold ${msg.senderId === 'me' ? 'bg-indigo-500' : 'bg-slate-400 dark:bg-slate-600'}`}>
+                          {msg.senderAvatar || '??'}
+                        </div>
+                        <div className={`max-w-[75%] ${msg.senderId === 'me' ? 'text-right' : ''}`}>
+                          <p className={`text-[10px] font-medium mb-0.5 ${msg.senderId === 'me' ? 'text-indigo-500' : 'text-slate-400'}`}>
+                            {msg.senderId === 'me' ? 'You' : msg.senderName}
+                          </p>
+                          <div className={`inline-block px-3 py-1.5 rounded-xl text-xs leading-relaxed ${msg.senderId === 'me' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white rounded-tl-sm'}`}>
+                            {msg.text}
+                          </div>
+                          <p className="text-[9px] text-slate-400 mt-0.5">{formatChatTime(msg.time)}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+                {/* Chat input */}
+                <div className="flex items-center gap-2 p-3 border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800">
+                  <input
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
+                    placeholder="Message..."
+                    className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  />
+                  <button
+                    onClick={sendChatMessage}
+                    disabled={!chatInput.trim()}
+                    className="p-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition cursor-pointer"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {project.team.map((member) => (
+                  <div key={member} className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/30 rounded-xl">
+                    <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${project.color} flex items-center justify-center text-white text-xs font-semibold`}>
+                      {member.split(' ').map((n) => n[0]).join('')}
+                    </div>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{member}</span>
+                    {member === project.lead && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">Lead</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tags */}

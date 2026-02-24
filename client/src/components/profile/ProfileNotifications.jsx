@@ -1,26 +1,31 @@
 import React from 'react'
 
-const notificationItems = [
-  { key: 'email', label: 'Email Notifications', description: 'Receive email updates about your account activity' },
-  { key: 'push', label: 'Push Notifications', description: 'Get push notifications on your devices' },
-  { key: 'taskUpdates', label: 'Task Updates', description: 'Get notified when tasks are assigned or updated' },
-  { key: 'teamMessages', label: 'Team Messages', description: 'Receive notifications for team messages' },
-  { key: 'projectAlerts', label: 'Project Alerts', description: 'Get alerts about project milestones and deadlines' },
-  { key: 'weeklyDigest', label: 'Weekly Digest', description: 'Receive a weekly summary of your activity' },
+const activityTriggers = [
+  { key: 'taskAssigned', label: 'Task Assigned', description: 'Get notified when a task is assigned to you', icon: '📋' },
+  { key: 'taskCompleted', label: 'Task Completed', description: 'Get notified when a task is marked as completed', icon: '✅' },
+  { key: 'taskComment', label: 'Task Comments', description: 'Get notified when someone comments on your task', icon: '💬' },
+  { key: 'projectUpdate', label: 'Project Updates', description: 'Get alerts about project milestones and changes', icon: '📁' },
+  { key: 'teamJoin', label: 'Team Activity', description: 'Get notified when someone joins your team', icon: '👥' },
+  { key: 'mentionAlert', label: 'Mentions', description: 'Get notified when someone mentions you', icon: '🔔' },
+  { key: 'deadlineReminder', label: 'Deadline Reminders', description: 'Get reminders about upcoming deadlines', icon: '⏰' },
 ]
 
 const ProfileNotifications = ({ notifications, onToggle }) => {
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
       <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700/50">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Notification Preferences</h2>
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Activity Notifications</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Choose which activities you want to be notified about</p>
       </div>
       <div className="divide-y divide-slate-100 dark:divide-slate-700/40">
-        {notificationItems.map((item) => (
+        {activityTriggers.map((item) => (
           <div key={item.key} className="flex items-center justify-between px-5 py-4">
-            <div>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.label}</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{item.description}</p>
+            <div className="flex items-center gap-3">
+              <span className="text-lg">{item.icon}</span>
+              <div>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.label}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{item.description}</p>
+              </div>
             </div>
             <button
               onClick={() => onToggle(item.key, !notifications[item.key])}

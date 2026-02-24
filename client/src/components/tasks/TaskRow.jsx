@@ -1,5 +1,11 @@
 import React from 'react'
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 const statusColor = {
   'Todo': 'bg-slate-200 dark:bg-slate-600/30 text-slate-600 dark:text-slate-400',
   'In Progress': 'bg-sky-100 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
@@ -117,7 +123,7 @@ const TaskRow = ({ task, onSelect, onToggleComplete }) => {
             ? 'text-red-500 dark:text-red-400 font-medium'
             : 'text-slate-600 dark:text-slate-400'
         }`}>
-          {task.dueDate || '—'}
+          {formatDate(task.dueDate)}
         </span>
       </div>
     </div>

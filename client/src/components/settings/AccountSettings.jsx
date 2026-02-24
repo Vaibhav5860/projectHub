@@ -1,19 +1,75 @@
 import React, { useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
+import { authAPI } from '../../services/api'
+import { useNavigate } from 'react-router-dom'
 
 const AccountSettings = () => {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [passwordForm, setPasswordForm] = useState({ current: '', newPass: '', confirm: '' })
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [passwordMsg, setPasswordMsg] = useState({ type: '', text: '' })
+  const [deleteMsg, setDeleteMsg] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault()
+    setPasswordMsg({ type: '', text: '' })
+
     if (passwordForm.newPass !== passwordForm.confirm) {
-      alert('Passwords do not match!')
+      setPasswordMsg({ type: 'error', text: 'New passwords do not match!' })
       return
     }
-    alert('Password updated successfully!')
-    setPasswordForm({ current: '', newPass: '', confirm: '' })
-    setShowPasswordForm(false)
+    if (passwordForm.newPass.length < 6) {
+      setPasswordMsg({ type: 'error', text: 'New password must be at least 6 characters.' })
+      return
+    }
+
+    setSavingPassword(true)
+    try {
+      await authAPI.changePassword({
+        currentPassword: passwordForm.current,
+        newPassword: passwordForm.newPass,
+      })
+      setPasswordMsg({ type: 'success', text: 'Password updated! Logging out...' })
+      setPasswordForm({ current: '', newPass: '', confirm: '' })
+      setTimeout(() => {
+        logout()
+        navigate('/login')
+      }, 1500)
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to update password.'
+      setPasswordMsg({ type: 'error', text: msg })
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteMsg('Please enter your password to confirm.')
+      return
+    }
+    const confirmed = window.confirm(
+      'WARNING: This will permanently delete your account and all associated data. This action cannot be undone.\n\nAre you absolutely sure you want to proceed?'
+    )
+    if (!confirmed) return
+    setDeletingAccount(true)
+    setDeleteMsg('')
+    try {
+      await authAPI.deleteAccount({ password: deletePassword })
+      alert('Your account has been successfully deleted.')
+      logout()
+      navigate('/login')
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to delete account.'
+      setDeleteMsg(msg)
+    } finally {
+      setDeletingAccount(false)
+    }
   }
 
   return (
@@ -74,10 +130,16 @@ const AccountSettings = () => {
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition cursor-pointer"
+                disabled={savingPassword}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition cursor-pointer"
               >
-                Update Password
+                {savingPassword ? 'Updating...' : 'Update Password'}
               </button>
+              {passwordMsg.text && (
+                <p className={`text-sm font-medium mt-2 ${passwordMsg.type === 'error' ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {passwordMsg.text}
+                </p>
+              )}
             </form>
           )}
         </div>
@@ -108,30 +170,20 @@ const AccountSettings = () => {
             </div>
           </div>
           <div className="space-y-3">
-            {[
-              { device: 'Chrome on Windows', location: 'San Francisco, CA', time: 'Current session', current: true },
-              { device: 'Safari on iPhone', location: 'San Francisco, CA', time: '2 hours ago', current: false },
-              { device: 'Firefox on MacBook', location: 'New York, NY', time: '3 days ago', current: false },
-            ].map((session, i) => (
-              <div key={i} className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/30 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${session.current ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{session.device}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">{session.location} · {session.time}</p>
-                  </div>
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/30 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
                 </div>
-                {session.current ? (
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Active</span>
-                ) : (
-                  <button className="text-xs font-medium text-red-500 hover:text-red-600 dark:hover:text-red-400 transition cursor-pointer">Revoke</button>
-                )}
+                <div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Current Browser</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Active now · {user?.email}</p>
+                </div>
               </div>
-            ))}
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Active</span>
+            </div>
           </div>
         </div>
 
@@ -149,12 +201,26 @@ const AccountSettings = () => {
           ) : (
             <div className="p-4 bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-xl">
               <p className="text-sm text-red-700 dark:text-red-300 mb-3">Are you sure? This action is permanent and cannot be undone. All your data will be deleted.</p>
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-red-600 dark:text-red-400 mb-1.5">Enter your password to confirm</label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your password"
+                  className="w-full max-w-sm px-3 py-2 bg-white dark:bg-slate-900/50 border border-red-300 dark:border-red-500/30 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                />
+              </div>
+              {deleteMsg && (
+                <p className="text-sm text-red-500 font-medium mb-2">{deleteMsg}</p>
+              )}
               <div className="flex gap-2">
                 <button
-                  onClick={() => alert('Account deletion is not available in demo mode.')}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition cursor-pointer"
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition cursor-pointer"
                 >
-                  Yes, Delete My Account
+                  {deletingAccount ? 'Deleting...' : 'Yes, Delete My Account'}
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}

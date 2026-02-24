@@ -42,7 +42,7 @@ const Signup = () => {
     }
     setIsLoading(true)
     try {
-      await register(formData.name, formData.email, formData.password)
+      await register(formData.name, formData.email, formData.password, formData.role)
       navigate('/dashboard')
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.')

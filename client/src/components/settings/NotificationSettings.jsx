@@ -1,36 +1,52 @@
 import React, { useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 
 const NotificationSettings = () => {
-  const [prefs, setPrefs] = useState(() => {
-    const saved = localStorage.getItem('projecthub_notification_settings')
-    return saved ? JSON.parse(saved) : {
-      emailNotifs: true,
-      pushNotifs: true,
-      desktopNotifs: false,
-      soundEnabled: true,
-      taskAssigned: true,
-      taskCompleted: true,
-      taskComment: true,
-      projectUpdate: true,
-      teamJoin: true,
-      mentionAlert: true,
-      deadlineReminder: true,
-      weeklyReport: false,
-      monthlyReport: true,
-      reminderTime: '30 minutes before',
-    }
+  const { user, updateUser } = useAuth()
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const [prefs, setPrefs] = useState({
+    emailNotifs: user?.notifications?.email ?? true,
+    pushNotifs: user?.notifications?.push ?? true,
+    desktopNotifs: user?.notifications?.desktop ?? false,
+    soundEnabled: user?.notifications?.sound ?? true,
+    weeklyReport: user?.notifications?.weeklyReport ?? false,
+    monthlyReport: user?.notifications?.monthlyReport ?? true,
+    reminderTime: user?.notifications?.reminderTime || '30 minutes before',
   })
 
   const handleToggle = (key) => {
-    const updated = { ...prefs, [key]: !prefs[key] }
-    setPrefs(updated)
-    localStorage.setItem('projecthub_notification_settings', JSON.stringify(updated))
+    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }))
+    setSaved(false)
   }
 
   const handleChange = (key, value) => {
-    const updated = { ...prefs, [key]: value }
-    setPrefs(updated)
-    localStorage.setItem('projecthub_notification_settings', JSON.stringify(updated))
+    setPrefs((prev) => ({ ...prev, [key]: value }))
+    setSaved(false)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateUser({
+        notifications: {
+          email: prefs.emailNotifs,
+          push: prefs.pushNotifs,
+          desktop: prefs.desktopNotifs,
+          sound: prefs.soundEnabled,
+          weeklyReport: prefs.weeklyReport,
+          monthlyReport: prefs.monthlyReport,
+          reminderTime: prefs.reminderTime,
+        },
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      console.error('Failed to save notification settings:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const channels = [
@@ -56,16 +72,6 @@ const NotificationSettings = () => {
     )},
   ]
 
-  const triggers = [
-    { key: 'taskAssigned', label: 'Task Assigned', desc: 'When a task is assigned to you' },
-    { key: 'taskCompleted', label: 'Task Completed', desc: 'When a task you\'re watching is completed' },
-    { key: 'taskComment', label: 'Task Comment', desc: 'When someone comments on your task' },
-    { key: 'projectUpdate', label: 'Project Update', desc: 'When a project you follow is updated' },
-    { key: 'teamJoin', label: 'Team Join', desc: 'When a new member joins your team' },
-    { key: 'mentionAlert', label: 'Mentions', desc: 'When someone mentions you' },
-    { key: 'deadlineReminder', label: 'Deadline Reminders', desc: 'Reminders before task deadlines' },
-  ]
-
   const reports = [
     { key: 'weeklyReport', label: 'Weekly Report', desc: 'Summary of your weekly activity' },
     { key: 'monthlyReport', label: 'Monthly Report', desc: 'Monthly performance overview' },
@@ -74,8 +80,8 @@ const NotificationSettings = () => {
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
       <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700/50">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Notifications</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Choose what notifications you receive and how</p>
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Delivery & Reports</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Configure how you receive notifications and scheduled reports</p>
       </div>
 
       {/* Channels */}
@@ -103,40 +109,20 @@ const NotificationSettings = () => {
         </div>
       </div>
 
-      {/* Triggers */}
+      {/* Reminder Timing */}
       <div className="p-5 border-b border-slate-100 dark:border-slate-700/40">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Activity Triggers</p>
-        <div className="space-y-3">
-          {triggers.map((tr) => (
-            <div key={tr.key} className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{tr.label}</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">{tr.desc}</p>
-              </div>
-              <button
-                onClick={() => handleToggle(tr.key)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus:outline-none
-                  ${prefs[tr.key] ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${prefs[tr.key] ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-          ))}
-        </div>
-        {/* Reminder time */}
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/30">
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Reminder Timing</label>
-          <select
-            value={prefs.reminderTime}
-            onChange={(e) => handleChange('reminderTime', e.target.value)}
-            className="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer"
-          >
-            <option value="15 minutes before">15 minutes before</option>
-            <option value="30 minutes before">30 minutes before</option>
-            <option value="1 hour before">1 hour before</option>
-            <option value="1 day before">1 day before</option>
-          </select>
-        </div>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Reminder Timing</p>
+        <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1.5">How early should you be reminded before deadlines?</label>
+        <select
+          value={prefs.reminderTime}
+          onChange={(e) => handleChange('reminderTime', e.target.value)}
+          className="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer"
+        >
+          <option value="15 minutes before">15 minutes before</option>
+          <option value="30 minutes before">30 minutes before</option>
+          <option value="1 hour before">1 hour before</option>
+          <option value="1 day before">1 day before</option>
+        </select>
       </div>
 
       {/* Reports */}
@@ -158,6 +144,20 @@ const NotificationSettings = () => {
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Save Button */}
+        <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/40 flex items-center gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition cursor-pointer"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          {saved && (
+            <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Notifications saved!</span>
+          )}
         </div>
       </div>
     </div>

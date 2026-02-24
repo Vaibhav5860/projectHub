@@ -26,7 +26,7 @@ const Login = () => {
     setError('')
     setIsLoading(true)
     try {
-      await login(formData.email, formData.password)
+      await login(formData.email, formData.password, formData.role)
       navigate('/dashboard')
     } catch (err) {
       const msg = err.response?.data?.message

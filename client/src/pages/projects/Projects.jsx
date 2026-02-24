@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useProjects } from '../../context/ProjectContext'
+import { useAuth } from '../../context/AuthContext'
 import Sidebar from '../../components/dashboard/Sidebar'
 import TopBar from '../../components/dashboard/TopBar'
 import ProjectStatsBar from '../../components/projects/ProjectStatsBar'
@@ -11,6 +12,8 @@ import ProjectDetail from '../../components/projects/ProjectDetail'
 
 const Projects = () => {
   const { projects, addProject, updateProject, deleteProject } = useProjects()
+  const { user } = useAuth()
+  const userRole = user?.role
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('All')
@@ -47,15 +50,17 @@ const Projects = () => {
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Projects</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Manage and track all your projects</p>
             </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition shadow-sm shadow-indigo-500/20 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              New Project
-            </button>
+            {(userRole === 'admin' || userRole === 'manager') && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition shadow-sm shadow-indigo-500/20 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                New Project
+              </button>
+            )}
           </div>
 
           <ProjectStatsBar projects={projects} />
@@ -106,13 +111,13 @@ const Projects = () => {
       </div>
 
       {/* Modals */}
-      {showAddModal && <AddProjectModal onClose={() => setShowAddModal(false)} onAdd={addProject} />}
+      {showAddModal && (userRole === 'admin' || userRole === 'manager') && <AddProjectModal onClose={() => setShowAddModal(false)} onAdd={addProject} />}
       {selectedProject && (
         <ProjectDetail
           project={selectedProject}
           onClose={() => setSelectedProject(null)}
-          onUpdate={(id, data) => { updateProject(id, data); setSelectedProject({ ...selectedProject, ...data }) }}
-          onDelete={deleteProject}
+          onUpdate={(userRole === 'admin' || userRole === 'manager') ? (id, data) => { updateProject(id, data); setSelectedProject({ ...selectedProject, ...data }) } : undefined}
+          onDelete={userRole === 'admin' ? deleteProject : undefined}
         />
       )}
     </div>

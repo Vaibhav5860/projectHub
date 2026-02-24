@@ -9,13 +9,13 @@ const {
   addMember,
   removeMember,
 } = require("../controllers/team.controller");
-const { protect } = require("../middleware/auth");
+const { protect, authorize } = require("../middleware/auth");
 
 router.use(protect);
 
-router.route("/").get(getTeams).post(createTeam);
-router.route("/:id").get(getTeam).put(updateTeam).delete(deleteTeam);
-router.route("/:id/members").post(addMember);
-router.route("/:id/members/:memberId").delete(removeMember);
+router.route("/").get(getTeams).post(authorize("admin", "manager"), createTeam);
+router.route("/:id").get(getTeam).put(authorize("admin", "manager"), updateTeam).delete(authorize("admin"), deleteTeam);
+router.route("/:id/members").post(authorize("admin", "manager"), addMember);
+router.route("/:id/members/:memberId").delete(authorize("admin", "manager"), removeMember);
 
 module.exports = router;

@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
+import { useProjects } from '../../context/ProjectContext'
+import { useTasks } from '../../context/TaskContext'
 
 const statusDot = {
   'Online': 'bg-emerald-500',
@@ -22,6 +24,8 @@ const gradients = [
 ]
 
 const MemberDetail = ({ member, onClose, onUpdate, onDelete }) => {
+  const { projects } = useProjects()
+  const { tasks } = useTasks()
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({
     name: member.name,
@@ -34,7 +38,22 @@ const MemberDetail = ({ member, onClose, onUpdate, onDelete }) => {
   })
 
   const gradient = gradients[parseInt(member.id) % gradients.length]
-  const progress = member.tasks > 0 ? Math.round((member.completedTasks / member.tasks) * 100) : 0
+
+  // Compute member's projects from ProjectContext
+  const memberProjects = useMemo(() => {
+    return projects.filter(p => {
+      const ids = p.teamIds || []
+      return ids.includes(member.id) || ids.includes(member._id) || p.leadId === member.id || p.leadId === member._id
+    }).map(p => p.name)
+  }, [projects, member.id, member._id])
+
+  // Compute member's task stats from TaskContext
+  const memberTasks = useMemo(() => {
+    return tasks.filter(t => t.assigneeId === member.id || t.assigneeId === member._id)
+  }, [tasks, member.id, member._id])
+  const totalTasks = memberTasks.length
+  const completedTasks = memberTasks.filter(t => t.status === 'Completed').length
+  const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
   const handleSave = () => {
     onUpdate(member.id, {
@@ -52,15 +71,17 @@ const MemberDetail = ({ member, onClose, onUpdate, onDelete }) => {
         {/* Banner */}
         <div className={`h-32 bg-gradient-to-r ${gradient} relative`}>
           <div className="absolute top-4 right-4 flex items-center gap-1">
-            <button
-              onClick={() => { if (confirm('Remove this team member?')) { onDelete(member.id); onClose() } }}
-              className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition cursor-pointer"
-              title="Remove member"
-            >
-              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+            {onDelete && (
+              <button
+                onClick={() => { if (confirm('Remove this team member?')) { onDelete(member.id); onClose() } }}
+                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition cursor-pointer"
+                title="Remove member"
+              >
+                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/20 transition cursor-pointer"
@@ -171,15 +192,17 @@ const MemberDetail = ({ member, onClose, onUpdate, onDelete }) => {
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white">{member.name}</h2>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{member.role}</p>
                 </div>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition cursor-pointer"
-                  title="Edit member"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
+                {onUpdate && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition cursor-pointer"
+                    title="Edit member"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusText[member.status]}`}>
@@ -219,7 +242,7 @@ const MemberDetail = ({ member, onClose, onUpdate, onDelete }) => {
             <div className="bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-slate-600 dark:text-slate-400">Completed</span>
-                <span className="text-sm font-semibold text-slate-900 dark:text-white">{member.completedTasks}/{member.tasks}</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-white">{completedTasks}/{totalTasks}</span>
               </div>
               <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div className={`h-full bg-gradient-to-r ${gradient} rounded-full transition-all duration-300`} style={{ width: `${progress}%` }} />
@@ -230,9 +253,9 @@ const MemberDetail = ({ member, onClose, onUpdate, onDelete }) => {
 
           {/* Projects */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Projects ({member.projects.length})</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Projects ({memberProjects.length})</h3>
             <div className="space-y-2">
-              {member.projects.length > 0 ? member.projects.map((project) => (
+              {memberProjects.length > 0 ? memberProjects.map((project) => (
                 <div key={project} className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/30 rounded-xl">
                   <div className="h-8 w-8 rounded-lg bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center">
                     <svg className="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

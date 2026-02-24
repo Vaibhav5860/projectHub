@@ -1,4 +1,6 @@
-import React from 'react'
+import React, { useMemo } from 'react'
+import { useProjects } from '../../context/ProjectContext'
+import { useTasks } from '../../context/TaskContext'
 
 const statusDot = {
   'Online': 'bg-emerald-500',
@@ -22,8 +24,23 @@ const gradients = [
 ]
 
 const MemberCard = ({ member, index, onSelect }) => {
+  const { projects } = useProjects()
+  const { tasks } = useTasks()
   const gradient = gradients[index % gradients.length]
-  const progress = member.tasks > 0 ? Math.round((member.completedTasks / member.tasks) * 100) : 0
+
+  const memberProjects = useMemo(() => {
+    return projects.filter(p => {
+      const ids = p.teamIds || []
+      return ids.includes(member.id) || ids.includes(member._id) || p.leadId === member.id || p.leadId === member._id
+    }).map(p => p.name)
+  }, [projects, member.id, member._id])
+
+  const memberTasks = useMemo(() => {
+    return tasks.filter(t => t.assigneeId === member.id || t.assigneeId === member._id)
+  }, [tasks, member.id, member._id])
+  const totalTasks = memberTasks.length
+  const completedTasks = memberTasks.filter(t => t.status === 'Completed').length
+  const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
   return (
     <div
@@ -63,7 +80,7 @@ const MemberCard = ({ member, index, onSelect }) => {
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs text-slate-500 dark:text-slate-400">Tasks</span>
-            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{member.completedTasks}/{member.tasks}</span>
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{completedTasks}/{totalTasks}</span>
           </div>
           <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <div className={`h-full bg-gradient-to-r ${gradient} rounded-full transition-all duration-300`} style={{ width: `${progress}%` }} />
@@ -72,13 +89,13 @@ const MemberCard = ({ member, index, onSelect }) => {
 
         {/* Projects */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {member.projects.slice(0, 2).map((project) => (
+          {memberProjects.slice(0, 2).map((project) => (
             <span key={project} className="text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400">
               {project}
             </span>
           ))}
-          {member.projects.length > 2 && (
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">+{member.projects.length - 2}</span>
+          {memberProjects.length > 2 && (
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">+{memberProjects.length - 2}</span>
           )}
         </div>
       </div>

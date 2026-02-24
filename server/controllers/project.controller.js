@@ -5,7 +5,19 @@ const { logActivity } = require("./activity.controller");
 // @route   GET /api/projects
 exports.getProjects = async (req, res, next) => {
   try {
-    const projects = await Project.find()
+    let filter = {};
+
+    // Developers only see projects they're on or lead
+    if (req.user.role === "developer") {
+      filter = { $or: [{ lead: req.user.id }, { team: req.user.id }, { createdBy: req.user.id }] };
+    }
+    // Managers see projects they created, lead, or are on
+    else if (req.user.role === "manager") {
+      filter = { $or: [{ lead: req.user.id }, { team: req.user.id }, { createdBy: req.user.id }] };
+    }
+    // Admin sees all
+
+    const projects = await Project.find(filter)
       .populate("lead", "name avatar")
       .populate("team", "name avatar");
     res.status(200).json({ success: true, count: projects.length, data: projects });

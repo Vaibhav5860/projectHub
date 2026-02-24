@@ -24,7 +24,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      default: "Member",
+      enum: ["admin", "manager", "developer"],
+      required: [true, "Please select a role"],
     },
     department: {
       type: String,
@@ -78,10 +79,40 @@ const userSchema = new mongoose.Schema(
     notifications: {
       email: { type: Boolean, default: true },
       push: { type: Boolean, default: true },
-      taskUpdates: { type: Boolean, default: true },
-      teamMessages: { type: Boolean, default: true },
-      projectAlerts: { type: Boolean, default: true },
-      weeklyDigest: { type: Boolean, default: false },
+      desktop: { type: Boolean, default: false },
+      sound: { type: Boolean, default: true },
+      taskAssigned: { type: Boolean, default: true },
+      taskCompleted: { type: Boolean, default: true },
+      taskComment: { type: Boolean, default: true },
+      projectUpdate: { type: Boolean, default: true },
+      teamJoin: { type: Boolean, default: true },
+      mentionAlert: { type: Boolean, default: true },
+      deadlineReminder: { type: Boolean, default: true },
+      weeklyReport: { type: Boolean, default: false },
+      monthlyReport: { type: Boolean, default: true },
+      reminderTime: { type: String, default: '30 minutes before' },
+    },
+    settings: {
+      general: {
+        dateFormat: { type: String, default: 'MM/DD/YYYY' },
+        timeFormat: { type: String, default: '12-hour' },
+        startOfWeek: { type: String, default: 'Monday' },
+        autoSave: { type: Boolean, default: true },
+        showCompletedTasks: { type: Boolean, default: true },
+        defaultTaskView: { type: String, default: 'List' },
+        projectSortBy: { type: String, default: 'Last Modified' },
+      },
+      appearance: {
+        fontSize: { type: Number, default: 14 },
+        density: { type: String, default: 'Default' },
+      },
+      integrations: [
+        {
+          name: { type: String },
+          connected: { type: Boolean, default: false },
+          account: { type: String, default: '' },
+        },
+      ],
     },
   },
   { timestamps: true }

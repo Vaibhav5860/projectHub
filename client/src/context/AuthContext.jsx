@@ -29,8 +29,8 @@ export const AuthProvider = ({ children }) => {
     loadUser()
   }, [token])
 
-  const login = async (email, password) => {
-    const res = await authAPI.login({ email, password })
+  const login = async (email, password, role) => {
+    const res = await authAPI.login({ email, password, role })
     const { token: newToken } = res.data
     localStorage.setItem('projecthub_token', newToken)
     setToken(newToken)
@@ -41,8 +41,8 @@ export const AuthProvider = ({ children }) => {
     return userRes.data.data
   }
 
-  const register = async (name, email, password) => {
-    const res = await authAPI.register({ name, email, password })
+  const register = async (name, email, password, role) => {
+    const res = await authAPI.register({ name, email, password, role })
     const { token: newToken } = res.data
     localStorage.setItem('projecthub_token', newToken)
     setToken(newToken)

@@ -2,22 +2,35 @@ import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from '../../components/dashboard/Sidebar'
 import TopBar from '../../components/dashboard/TopBar'
-import StatsGrid from '../../components/dashboard/StatsGrid'
-import RecentProjects from '../../components/dashboard/RecentProjects'
-import UpcomingTasks from '../../components/dashboard/UpcomingTasks'
-import ActivityFeed from '../../components/dashboard/ActivityFeed'
-import ProjectProgressChart from '../../components/dashboard/charts/ProjectProgressChart'
-import TaskStatusChart from '../../components/dashboard/charts/TaskStatusChart'
-import BudgetOverviewChart from '../../components/dashboard/charts/BudgetOverviewChart'
-import WeeklyActivityChart from '../../components/dashboard/charts/WeeklyActivityChart'
-import PriorityDistributionChart from '../../components/dashboard/charts/PriorityDistributionChart'
-import TaskCompletionChart from '../../components/dashboard/charts/TaskCompletionChart'
+import AdminDashboard from '../../components/dashboard/AdminDashboard'
+import ManagerDashboard from '../../components/dashboard/ManagerDashboard'
+import DeveloperDashboard from '../../components/dashboard/DeveloperDashboard'
+
+const roleBadge = {
+  admin: { label: 'Admin', color: 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400' },
+  manager: { label: 'Manager', color: 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  developer: { label: 'Developer', color: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+}
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const { user } = useAuth()
   const userName = user?.name || 'User'
-  const userRole = user?.role || 'Member'
+  const userRole = user?.role || 'developer'
+
+  const badge = roleBadge[userRole] || roleBadge.developer
+
+  const renderDashboard = () => {
+    switch (userRole) {
+      case 'admin':
+        return <AdminDashboard />
+      case 'manager':
+        return <ManagerDashboard />
+      case 'developer':
+      default:
+        return <DeveloperDashboard />
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200 flex">
@@ -28,44 +41,23 @@ const Dashboard = () => {
 
         <main className="p-6">
           {/* Welcome */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome back, {userName} 👋</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Here's what's happening with your projects today.</p>
-          </div>
-
-          <StatsGrid />
-
-          {/* Analytics Section */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Analytics Overview</h2>
-
-            {/* Row 1: Weekly Activity (wide) + Task Status (donut) */}
-            <div className="grid lg:grid-cols-3 gap-6 mb-6">
-              <div className="lg:col-span-2">
-                <WeeklyActivityChart />
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome back, {userName} 👋</h1>
+                <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${badge.color}`}>
+                  {badge.label}
+                </span>
               </div>
-              <TaskStatusChart />
-            </div>
-
-            {/* Row 2: Project Progress + Budget Overview */}
-            <div className="grid lg:grid-cols-2 gap-6 mb-6">
-              <ProjectProgressChart />
-              <BudgetOverviewChart />
-            </div>
-
-            {/* Row 3: Priority Distribution + Task Completion */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              <PriorityDistributionChart />
-              <TaskCompletionChart />
+              <p className="text-slate-500 dark:text-slate-400 mt-1">
+                {userRole === 'admin' && "Here's your system-wide overview."}
+                {userRole === 'manager' && "Here's what's happening with your projects and team."}
+                {userRole === 'developer' && "Here's your task progress and assignments."}
+              </p>
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6 mb-8">
-            <RecentProjects />
-            <UpcomingTasks />
-          </div>
-
-          <ActivityFeed />
+          {renderDashboard()}
         </main>
       </div>
     </div>

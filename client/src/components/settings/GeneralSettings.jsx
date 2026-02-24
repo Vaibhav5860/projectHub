@@ -1,27 +1,54 @@
 import React, { useState } from 'react'
-
-const defaultPrefs = {
-  language: 'English',
-  timezone: 'PST (UTC-8)',
-  dateFormat: 'MM/DD/YYYY',
-  timeFormat: '12-hour',
-  startOfWeek: 'Monday',
-  autoSave: true,
-  showCompletedTasks: true,
-  defaultTaskView: 'List',
-  projectSortBy: 'Last Modified',
-}
+import { useAuth } from '../../context/AuthContext'
 
 const GeneralSettings = () => {
-  const [prefs, setPrefs] = useState(() => {
-    const saved = localStorage.getItem('projecthub_general_settings')
-    return saved ? JSON.parse(saved) : defaultPrefs
+  const { user, updateUser } = useAuth()
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const [prefs, setPrefs] = useState({
+    language: user?.language || 'English',
+    timezone: user?.timezone || 'PST (UTC-8)',
+    dateFormat: user?.settings?.general?.dateFormat || 'MM/DD/YYYY',
+    timeFormat: user?.settings?.general?.timeFormat || '12-hour',
+    startOfWeek: user?.settings?.general?.startOfWeek || 'Monday',
+    autoSave: user?.settings?.general?.autoSave ?? true,
+    showCompletedTasks: user?.settings?.general?.showCompletedTasks ?? true,
+    defaultTaskView: user?.settings?.general?.defaultTaskView || 'List',
+    projectSortBy: user?.settings?.general?.projectSortBy || 'Last Modified',
   })
 
   const handleChange = (key, value) => {
-    const updated = { ...prefs, [key]: value }
-    setPrefs(updated)
-    localStorage.setItem('projecthub_general_settings', JSON.stringify(updated))
+    setPrefs((prev) => ({ ...prev, [key]: value }))
+    setSaved(false)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateUser({
+        language: prefs.language,
+        timezone: prefs.timezone,
+        settings: {
+          ...user?.settings,
+          general: {
+            dateFormat: prefs.dateFormat,
+            timeFormat: prefs.timeFormat,
+            startOfWeek: prefs.startOfWeek,
+            autoSave: prefs.autoSave,
+            showCompletedTasks: prefs.showCompletedTasks,
+            defaultTaskView: prefs.defaultTaskView,
+            projectSortBy: prefs.projectSortBy,
+          },
+        },
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      console.error('Failed to save settings:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const selectFields = [
@@ -81,6 +108,20 @@ const GeneralSettings = () => {
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Save Button */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-700/40 flex items-center gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition cursor-pointer"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          {saved && (
+            <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Settings saved!</span>
+          )}
         </div>
       </div>
     </div>

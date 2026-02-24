@@ -1,8 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useTheme } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 
 const AppearanceSettings = () => {
   const { theme, toggleTheme } = useTheme()
+  const { user, updateUser } = useAuth()
+  const [fontSize, setFontSize] = useState(user?.settings?.appearance?.fontSize || 14)
+  const [density, setDensity] = useState(user?.settings?.appearance?.density || 'Default')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   const themes = [
     { id: 'light', label: 'Light', icon: (
@@ -59,14 +65,15 @@ const AppearanceSettings = () => {
 
         {/* Font size */}
         <div className="mb-6">
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Font Size</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Font Size — {fontSize}px</label>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-400">A</span>
             <input
               type="range"
               min="12"
               max="18"
-              defaultValue="14"
+              value={fontSize}
+              onChange={(e) => { setFontSize(Number(e.target.value)); setSaved(false); }}
               className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-indigo-600"
             />
             <span className="text-lg text-slate-400 font-bold">A</span>
@@ -74,22 +81,54 @@ const AppearanceSettings = () => {
         </div>
 
         {/* Density */}
-        <div>
+        <div className="mb-6">
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Content Density</label>
           <div className="flex gap-3">
-            {['Compact', 'Default', 'Comfortable'].map((density) => (
+            {['Compact', 'Default', 'Comfortable'].map((d) => (
               <button
-                key={density}
+                key={d}
+                onClick={() => { setDensity(d); setSaved(false); }}
                 className={`flex-1 px-3 py-2.5 text-sm font-medium rounded-lg border transition cursor-pointer
-                  ${density === 'Default'
+                  ${density === d
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                     : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
                   }`}
               >
-                {density}
+                {d}
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Save Button */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-700/40 flex items-center gap-3">
+          <button
+            onClick={async () => {
+              setSaving(true)
+              try {
+                document.documentElement.style.fontSize = `${fontSize}px`
+                await updateUser({
+                  settings: {
+                    ...user?.settings,
+                    appearance: { fontSize, density },
+                  },
+                })
+                setSaved(true)
+                setTimeout(() => setSaved(false), 3000)
+              } catch (err) {
+                console.error('Failed to save appearance settings:', err)
+              } finally {
+                setSaving(false)
+              }
+            }}
+            disabled={saving}
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition cursor-pointer"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          {saved && (
+            <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Appearance saved!</span>
+          )}
         </div>
       </div>
     </div>

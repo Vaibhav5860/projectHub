@@ -7,11 +7,11 @@ const {
   updateProject,
   deleteProject,
 } = require("../controllers/project.controller");
-const { protect } = require("../middleware/auth");
+const { protect, authorize } = require("../middleware/auth");
 
 router.use(protect);
 
-router.route("/").get(getProjects).post(createProject);
-router.route("/:id").get(getProject).put(updateProject).delete(deleteProject);
+router.route("/").get(getProjects).post(authorize("admin", "manager"), createProject);
+router.route("/:id").get(getProject).put(authorize("admin", "manager"), updateProject).delete(authorize("admin"), deleteProject);
 
 module.exports = router;

@@ -5,6 +5,16 @@ import { getSocket, emitDataChanged } from '../services/socket'
 
 const TaskContext = createContext()
 
+const mapTask = (t) => ({
+  ...t,
+  id: t._id,
+  assignee: typeof t.assignee === 'object' ? t.assignee?.name : (t.assignee || ''),
+  assigneeId: typeof t.assignee === 'object' ? t.assignee?._id : t.assignee,
+  project: typeof t.project === 'object' ? t.project?.name : (t.project || ''),
+  projectId: typeof t.project === 'object' ? t.project?._id : t.project,
+  subtasks: (t.subtasks || []).map(s => ({ ...s, id: s._id })),
+})
+
 export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
@@ -20,15 +30,7 @@ export const TaskProvider = ({ children }) => {
     try {
       setLoading(true)
       const res = await tasksAPI.getAll()
-      setTasks(res.data.data.map(t => ({
-        ...t,
-        id: t._id,
-        assignee: typeof t.assignee === 'object' ? t.assignee?.name : (t.assignee || ''),
-        assigneeId: typeof t.assignee === 'object' ? t.assignee?._id : t.assignee,
-        project: typeof t.project === 'object' ? t.project?.name : (t.project || ''),
-        projectId: typeof t.project === 'object' ? t.project?._id : t.project,
-        subtasks: (t.subtasks || []).map(s => ({ ...s, id: s._id })),
-      })))
+      setTasks(res.data.data.map(mapTask))
       setError(null)
     } catch (err) {
       console.error('Failed to fetch tasks:', err)
@@ -68,7 +70,7 @@ export const TaskProvider = ({ children }) => {
         delete apiData.project
       }
       const res = await tasksAPI.create(apiData)
-      const task = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      const task = mapTask(res.data.data)
       setTasks((prev) => [task, ...prev])
       emitDataChanged({ type: 'task', action: 'create' })
       return task
@@ -80,7 +82,7 @@ export const TaskProvider = ({ children }) => {
   const updateTask = async (id, updates) => {
     try {
       const res = await tasksAPI.update(id, updates)
-      const task = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      const task = mapTask(res.data.data)
       setTasks((prev) => prev.map((t) => (t._id === id || t.id === id ? task : t)))
       emitDataChanged({ type: 'task', action: 'update' })
       return task
@@ -105,7 +107,7 @@ export const TaskProvider = ({ children }) => {
       if (!task) return
       const subtasks = [...(task.subtasks || []), { title, completed: false }]
       const res = await tasksAPI.update(task._id || taskId, { subtasks })
-      const updated = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      const updated = mapTask(res.data.data)
       setTasks((prev) => prev.map((t) => (t._id === taskId || t.id === taskId ? updated : t)))
       emitDataChanged({ type: 'task', action: 'update' })
     } catch (err) {
@@ -121,7 +123,7 @@ export const TaskProvider = ({ children }) => {
         (s._id === subtaskId || s.id === subtaskId) ? { ...s, completed: !s.completed } : s
       )
       const res = await tasksAPI.update(task._id || taskId, { subtasks })
-      const updated = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      const updated = mapTask(res.data.data)
       setTasks((prev) => prev.map((t) => (t._id === taskId || t.id === taskId ? updated : t)))
       emitDataChanged({ type: 'task', action: 'update' })
     } catch (err) {
@@ -135,7 +137,7 @@ export const TaskProvider = ({ children }) => {
       if (!task) return
       const subtasks = task.subtasks.filter((s) => s._id !== subtaskId && s.id !== subtaskId)
       const res = await tasksAPI.update(task._id || taskId, { subtasks })
-      const updated = { ...res.data.data, id: res.data.data._id, subtasks: (res.data.data.subtasks || []).map(s => ({ ...s, id: s._id })) }
+      const updated = mapTask(res.data.data)
       setTasks((prev) => prev.map((t) => (t._id === taskId || t.id === taskId ? updated : t)))
       emitDataChanged({ type: 'task', action: 'update' })
     } catch (err) {

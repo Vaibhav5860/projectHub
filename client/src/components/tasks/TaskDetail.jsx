@@ -1,4 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
+import { useProjects } from '../../context/ProjectContext'
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
 const statusOptions = ['Todo', 'In Progress', 'In Review', 'Completed']
 const priorityOptions = ['Low', 'Medium', 'High']
@@ -17,15 +24,21 @@ const priorityColor = {
 }
 
 const TaskDetail = ({ task, onClose, onUpdate, onAddSubtask, onToggleSubtask, onDeleteSubtask, onDelete }) => {
+  const { projects } = useProjects()
   const [newSubtask, setNewSubtask] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({
     title: task.title,
     description: task.description,
-    assignee: task.assignee,
-    dueDate: task.dueDate,
-    project: task.project,
+    assignee: task.assigneeId || '',
+    dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : '',
+    project: task.projectId || '',
   })
+
+  const projectMembers = useMemo(() => {
+    const proj = projects.find(p => p.id === editForm.project || p._id === editForm.project)
+    return proj?.teamMembers || []
+  }, [projects, editForm.project])
 
   const handleAddSubtask = (e) => {
     e.preventDefault()
@@ -62,15 +75,17 @@ const TaskDetail = ({ task, onClose, onUpdate, onAddSubtask, onToggleSubtask, on
               </span>
             </div>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => { if (confirm('Delete this task?')) { onDelete(task.id); onClose() } }}
-                className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition cursor-pointer"
-                title="Delete task"
-              >
-                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+              {onDelete && (
+                <button
+                  onClick={() => { if (confirm('Delete this task?')) { onDelete(task.id); onClose() } }}
+                  className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition cursor-pointer"
+                  title="Delete task"
+                >
+                  <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition cursor-pointer"
@@ -99,12 +114,16 @@ const TaskDetail = ({ task, onClose, onUpdate, onAddSubtask, onToggleSubtask, on
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition resize-none"
               />
               <div className="grid grid-cols-2 gap-3">
-                <input
+                <select
                   value={editForm.assignee}
                   onChange={(e) => setEditForm({ ...editForm, assignee: e.target.value })}
-                  placeholder="Assignee"
                   className="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600/50 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                />
+                >
+                  <option value="">Unassigned</option>
+                  {projectMembers.map(m => (
+                    <option key={m._id} value={m._id}>{m.name}</option>
+                  ))}
+                </select>
                 <input
                   type="date"
                   value={editForm.dueDate}
@@ -121,15 +140,17 @@ const TaskDetail = ({ task, onClose, onUpdate, onAddSubtask, onToggleSubtask, on
             <div>
               <div className="flex items-start justify-between gap-3">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{task.title}</h2>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition cursor-pointer shrink-0"
-                  title="Edit task"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
+                {onUpdate && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition cursor-pointer shrink-0"
+                    title="Edit task"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">{task.description || 'No description provided.'}</p>
             </div>
@@ -141,8 +162,9 @@ const TaskDetail = ({ task, onClose, onUpdate, onAddSubtask, onToggleSubtask, on
               <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wider font-medium">Status</p>
               <select
                 value={task.status}
-                onChange={(e) => onUpdate(task.id, { status: e.target.value })}
-                className="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                onChange={(e) => onUpdate && onUpdate(task.id, { status: e.target.value })}
+                disabled={!onUpdate}
+                className="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white focus:outline-none cursor-pointer disabled:cursor-default disabled:opacity-70"
               >
                 {statusOptions.map((s) => (
                   <option key={s} value={s} className="bg-white dark:bg-slate-800">{s}</option>
@@ -153,8 +175,9 @@ const TaskDetail = ({ task, onClose, onUpdate, onAddSubtask, onToggleSubtask, on
               <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wider font-medium">Priority</p>
               <select
                 value={task.priority}
-                onChange={(e) => onUpdate(task.id, { priority: e.target.value })}
-                className="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                onChange={(e) => onUpdate && onUpdate(task.id, { priority: e.target.value })}
+                disabled={!onUpdate}
+                className="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white focus:outline-none cursor-pointer disabled:cursor-default disabled:opacity-70"
               >
                 {priorityOptions.map((p) => (
                   <option key={p} value={p} className="bg-white dark:bg-slate-800">{p}</option>
@@ -167,7 +190,7 @@ const TaskDetail = ({ task, onClose, onUpdate, onAddSubtask, onToggleSubtask, on
             </div>
             <div className="bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4">
               <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wider font-medium">Due Date</p>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">{task.dueDate || '—'}</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{formatDate(task.dueDate)}</p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4">
               <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wider font-medium">Project</p>
@@ -175,7 +198,7 @@ const TaskDetail = ({ task, onClose, onUpdate, onAddSubtask, onToggleSubtask, on
             </div>
             <div className="bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4">
               <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wider font-medium">Created</p>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">{task.createdAt}</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{formatDate(task.createdAt)}</p>
             </div>
           </div>
 
