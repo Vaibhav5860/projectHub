@@ -2,14 +2,6 @@
   "name": "projecthub",
   "version": "1.0.0",
   "description": "A full-stack project management application built with React and Node.js",
-  "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd server && npm run dev",
-    "client": "cd client && npm run dev",
-    "build": "cd client && npm run build",
-    "start": "cd server && npm start",
-    "install": "cd server && npm install && cd ../client && npm install"
-  },
   "keywords": [
     "project-management",
     "react",
@@ -18,8 +10,5 @@
     "mongodb"
   ],
   "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "concurrently": "^9.1.2"
-  }
+  "license": "MIT"
 }

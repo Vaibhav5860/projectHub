@@ -14,10 +14,15 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+// Allowed origins from env or defaults
+const allowedOrigins = process.env.CLIENT_URL
+  ? [process.env.CLIENT_URL, "http://localhost:5173", "http://localhost:3000"]
+  : ["http://localhost:5173", "http://localhost:3000"];
+
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -78,7 +83,7 @@ io.on("connection", (socket) => {
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000"],
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());
