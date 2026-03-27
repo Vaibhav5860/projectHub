@@ -1,6 +1,8 @@
 # ProjectHub
 
-ProjectHub is a full-stack project management platform for teams that need project tracking, task execution, team collaboration, and real-time messaging in one place.
+[![Live Demo](https://img.shields.io/badge/Live-Demo-green?style=for-the-badge)](https://project-hub-web.vercel.app/)
+
+ProjectHub is a **full-stack project management platform** designed to streamline **project tracking, task management, team collaboration, and real-time communication** within a unified interface. It enables teams to efficiently organize workflows, monitor progress, and collaborate seamlessly through integrated messaging features.
 
 ## What You Get
 
