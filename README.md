@@ -13,6 +13,15 @@ ProjectHub is a full-stack project management platform for teams that need proje
 - JWT authentication and protected API routes
 - Profile, notifications, and settings modules
 
+## Screenshots
+
+<p align="center">
+	<img src="docs/screenshots/Screenshot%201.png" alt="Dashboard screenshot" width="280" style="border:1px solid #d0d7de; border-radius:10px; padding:4px; margin-right:8px;" />
+	<img src="docs/screenshots/Screenshot%202.png" alt="Projects screenshot" width="280" style="border:1px solid #d0d7de; border-radius:10px; padding:4px; margin-right:8px;" />
+	<img src="docs/screenshots/Screenshot%203.png" alt="Messages screenshot" width="280" style="border:1px solid #d0d7de; border-radius:10px; padding:4px;" />
+</p>
+
+
 ## Tech Stack
 
 ### Frontend (client)
