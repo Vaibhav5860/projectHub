@@ -4,6 +4,16 @@
 
 ProjectHub is a **full-stack project management platform** designed to streamline **project tracking, task management, team collaboration, and real-time communication** within a unified interface. It enables teams to efficiently organize workflows, monitor progress, and collaborate seamlessly through integrated messaging features.
 
+## 🔗 Live URLs
+
+| Service | URL | Status |
+|---------|-----|--------|
+| **Frontend** | https://project-hub-web.vercel.app/ | ✅ Live |
+| **Backend (Node.js)** | https://projecthub-3i3f.onrender.com/ | ✅ Live |
+| **Backend (Docker)** | https://project-hub-hiy1.onrender.com | ✅ Live |
+
+---
+
 ## What You Get
 
 - Multi-role dashboards for admin, manager, and developer workflows
